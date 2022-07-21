@@ -37,6 +37,8 @@ from PyQt5 import (
     QtGui,
     QtWidgets,
 )
+from PyQt5.QtCore import QSortFilterProxyModel
+from PyQt5.QtWidgets import QLineEdit, QAbstractItemView
 
 from eddy.core.commands.iri import (
     CommandCommmonSubstringIRIsRefactor,
@@ -55,6 +57,7 @@ from eddy.core.commands.project import (
 )
 from eddy.core.common import HasWidgetSystem
 from eddy.core.datatypes.graphol import Item
+
 from eddy.core.datatypes.system import File
 
 from eddy.core.exporters.metadata import (
@@ -66,6 +69,7 @@ from eddy.core.exporters.metadata import (
 from eddy.core.functions.fsystem import fexists
 from eddy.core.functions.misc import first
 from eddy.core.functions.path import expandPath
+
 from eddy.core.functions.signals import connect
 from eddy.core.output import getLogger
 from eddy.core.owl import (
@@ -80,7 +84,9 @@ from eddy.ui.fields import (
     CheckBox,
     ComboBox,
 )
+
 from eddy.ui.file import FileDialog
+
 
 LOGGER = getLogger()
 
@@ -386,6 +392,7 @@ class OntologyManagerDialog(QtWidgets.QDialog, HasWidgetSystem):
         connect(addBtn.clicked, self.addAnnotationProperty)
         self.addWidget(addBtn)
 
+
         boxlayout = QtWidgets.QHBoxLayout()
         boxlayout.setAlignment(QtCore.Qt.AlignCenter)
         boxlayout.addWidget(self.widget('annotation_add_button'))
@@ -403,7 +410,9 @@ class OntologyManagerDialog(QtWidgets.QDialog, HasWidgetSystem):
         connect(self.widget('iri_prefix_switch').currentIndexChanged, self.onAnnotationPrefixChanged)
         connect(self.widget('iri_input_field').textChanged, self.onAnnotationInputChanged)
 
+
         # IMPORT/EXPORT TEMPLATE
+
         templateBtn = QtWidgets.QPushButton('Generate Template',
                                             objectName='annotation_create_template_button')
         connect(templateBtn.clicked, self.createTemplate)
@@ -416,13 +425,16 @@ class OntologyManagerDialog(QtWidgets.QDialog, HasWidgetSystem):
 
         boxlayout = QtWidgets.QHBoxLayout()
         boxlayout.setAlignment(QtCore.Qt.AlignCenter)
+
         boxlayout.addWidget(self.widget('annotation_create_template_button'))
         boxlayout.addWidget(self.widget('annotation_import_template_button'))
 
         formlayout = QtWidgets.QFormLayout()
+
         formlayout.addRow(boxlayout)
         groupbox = QtWidgets.QGroupBox('Import/Export Template', self,
                                        objectName='template_widget')
+
         groupbox.setLayout(formlayout)
         self.addWidget(groupbox)
 
@@ -433,6 +445,7 @@ class OntologyManagerDialog(QtWidgets.QDialog, HasWidgetSystem):
         layout.addWidget(self.widget('annotation_properties_widget'), 0, QtCore.Qt.AlignTop)
         layout.addWidget(self.widget('add_annotation_group_widget'), 1, QtCore.Qt.AlignTop)
         layout.addWidget(self.widget('template_widget'), 2, QtCore.Qt.AlignTop)
+
 
         widget = QtWidgets.QWidget()
         widget.setLayout(layout)
@@ -786,6 +799,7 @@ class OntologyManagerDialog(QtWidgets.QDialog, HasWidgetSystem):
         annotationAssertions = metadataExp.metadata()
         table = self.widget('annotation_assertions_table_widget')
         table.clear()
+
         table.setHorizontalHeaderLabels(
             ['IRI', 'SimpleName', 'Type', 'AnnotationProperty', 'Datatype', 'Lang', 'Value'])
         table.setRowCount(len(annotationAssertions))
@@ -843,6 +857,7 @@ class OntologyManagerDialog(QtWidgets.QDialog, HasWidgetSystem):
 
         table.resizeColumnsToContents()
         table.sortItems(0)
+
 
         #############################################
         # Global IRI
@@ -1542,6 +1557,7 @@ class OntologyManagerDialog(QtWidgets.QDialog, HasWidgetSystem):
                     print(e)
                 worker.run(path)
                 if fexists(expandPath(first(dialog.selectedFiles()))):
+
                     session.addNotification("""
                     Ontology export completed: <br><br>
                     <b><a href=file:{0}>{1}</a></b>
@@ -1744,6 +1760,7 @@ class OntologyManagerDialog(QtWidgets.QDialog, HasWidgetSystem):
             assertion = editItem.data(QtCore.Qt.UserRole)
             commands.append(CommandIRIRemoveAnnotationAssertion(self.project, itemIri, assertion))
 
+
         self.session.undostack.beginMacro('remove annotation assertions >>')
         for command in commands:
             if command:
@@ -1782,6 +1799,7 @@ class OntologyManagerDialog(QtWidgets.QDialog, HasWidgetSystem):
         table.setSelectionMode(QtWidgets.QAbstractItemView.MultiSelection)
         table.clearSelection()
 
+
         rowCount = table.rowCount()
 
         for row in range(rowCount):
@@ -1789,4 +1807,5 @@ class OntologyManagerDialog(QtWidgets.QDialog, HasWidgetSystem):
                 table.selectRow(row)
 
         table.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
+
 

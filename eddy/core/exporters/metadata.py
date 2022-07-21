@@ -64,7 +64,9 @@ from eddy.core.functions.fsystem import fwrite
 from eddy.core.functions.path import openPath
 from eddy.core.functions.signals import connect
 from eddy.core.output import getLogger
+
 from eddy.core.owl import Annotation, AnnotationAssertionProperty
+
 from eddy.ui.dialogs import DiagramSelectionDialog
 from eddy.ui.fields import (
     CheckBox,
@@ -107,8 +109,8 @@ class AbstractMetadataExporter(AbstractProjectExporter):
         self.annotations = kwargs.get('annotations', None)
         self.items = kwargs.get('items', None)
         self.open = kwargs.get('open', False)
-        self.includeEntitiesWithoutAnnotations = kwargs.get('includeEntitiesWithoutAnnotations',False)
 
+        self.includeEntitiesWithoutAnnotations = kwargs.get('includeEntitiesWithoutAnnotations',False)
 
     #############################################
     #   INTERFACE
@@ -146,8 +148,10 @@ class AbstractMetadataExporter(AbstractProjectExporter):
             for node in self.project.iriOccurrences(diagram=diagram):
                 if node.type() not in self.items or node.iri in processed:
                     continue
+
                 if self.includeEntitiesWithoutAnnotations and len(
                     node.iri.annotationAssertions) == 0:
+
                     meta.append({
                         self.KeyResource: str(node.iri),
                         self.KeySimpleName: node.iri.getSimpleName(),
@@ -169,6 +173,7 @@ class AbstractMetadataExporter(AbstractProjectExporter):
                             self.KeyValue: str(annotation.value),
                         })
                 processed.add(node.iri)
+
 
         # IMPORTED METADATA
         for ont in self.project.importedOntologies:
@@ -255,6 +260,9 @@ class CsvProjectExporter(AbstractMetadataExporter):
             # CHECK INCLUSION OF ENTITIES WITHOUT ANNOTATIONS
             self.includeEntitiesWithoutAnnotations = dialog.checked()
 
+            # CHECK INCLUSION OF ENTITIES WITHOUT ANNOTATIONS
+            self.includeEntitiesWithoutAnnotations = dialog.checked()
+
         buffer = io.StringIO()
         writer = csv.writer(buffer, delimiter=',', quotechar='"', quoting=csv.QUOTE_ALL)
         writer.writerow(self.metadataHeader())
@@ -262,6 +270,7 @@ class CsvProjectExporter(AbstractMetadataExporter):
         fwrite(buffer.getvalue(), path)
         if self.open:
             openPath(path)
+
 
 class XlsxProjectExporter(AbstractMetadataExporter):
     """
@@ -313,6 +322,7 @@ class XlsxProjectExporter(AbstractMetadataExporter):
         alignment = Alignment(vertical='center', wrapText=True)
         headStyle = NamedStyle(name='head', font=headFont, alignment=alignment)
         bodyStyle = NamedStyle(name='body', font=bodyFont, alignment=alignment)
+
         # HEADER ROW
         for j, title in enumerate(self.metadataHeader(), start=1):
             worksheet.cell(row=1, column=j, value=title).style = headStyle
@@ -522,6 +532,85 @@ class XlsxTemplateExporter(AbstractTemplateExporter):
             # Set height as number of lines x default font height + some padding
             worksheet.row_dimensions[i].height = height * bodyFont.size * 1.25
         workbook.save(path)
+        if self.open:
+            openPath(path)
+
+class XlsxTemplateExporter(AbstractMetadataExporter):
+    """
+    This class can be used to export Graphol projects into Excel 2007+ .xlsx format.
+    """
+    #############################################
+    #   INTERFACE
+    #################################
+
+    @classmethod
+    def filetype(cls) -> File:
+        """
+        Returns the type of the file that will be used for the export.
+        """
+        return File.Xlsx
+
+    def run(self, path: str) -> None:
+        """
+        Perform Xlsx file generation.
+        """
+        LOGGER.info('Exporting metadata template %s to XLSX file: %s', self.project.name, path)
+
+        # SELECT PROJECT DIAGRAMS
+        if self.diagrams is None:
+            if not self.project.isEmpty():
+                dialog = DiagramSelectionDialog(self.session)
+                if not dialog.exec_():
+                    return
+                self.diagrams = dialog.selectedDiagrams()
+            else:
+                self.diagrams = self.project.diagrams()
+
+        if self.items is None:
+            dialog = EntityTypesSelectionDialog(self.project, parent=self.session)
+            if not dialog.exec_():
+                return
+            self.items = dialog.selectedItems()
+
+        workbook = xlsxwriter.Workbook(path)
+        worksheet = workbook.add_worksheet(self.project.name)
+        # HEADER ROW
+        headerFormat = workbook.add_format({'bold': True})
+        worksheet.write_row(0, 0, self.metadataHeader(), headerFormat)
+        worksheet.freeze_panes(1, 0)
+        # METADATA ROWS
+        meta = []
+        processed = []
+        for diagram in self.diagrams:
+            for item in diagram.items():
+                if item.type() in self.items and str(item.iri) not in processed:
+                    meta.append({
+                        self.KeyResource: str(item.iri),
+                        self.KeySimpleName: item.iri.getSimpleName(),
+                        self.KeyType: self.Types.get(item.type()),
+                        self.KeyAnnotation: AnnotationAssertionProperty.Label.value,
+                        self.KeyDataType: '',
+                        self.KeyLang: '',
+                        self.KeyValue: '',
+                    })
+                    processed.append(str(item.iri))
+
+        metadata = sorted(meta, key=lambda i: i[self.KeyResource])
+        if metadata:
+            for i, row in enumerate(metadata, start=1):
+                worksheet.write_row(i, 0, map(str, row.values()))
+
+            # AUTOFIT COLUMN WIDTHS
+            def cell_format(name: str):
+                valueFormat = workbook.add_format({'text_wrap': True, 'align': 'vcenter'})
+                keyFormat = workbook.add_format({'align': 'vcenter'})
+                return valueFormat if name == self.KeyValue else keyFormat
+            for j, key in enumerate(self.metadataHeader()):
+                # Compute the column width as the max between the size
+                # of the column header, and the max size of all column values.
+                width = max(len(key), max(map(lambda d: len(str(d[key])), metadata)))
+                worksheet.set_column(j, j, width, cell_format=cell_format(key))
+        workbook.close()
         if self.open:
             openPath(path)
 
@@ -905,6 +994,7 @@ class EntityTypesSelectionDialog(HasWidgetSystem, QtWidgets.QDialog):
             Item.IndividualNode,
         })
 
+
         # ENTITY TYPES GROUP BOX
         groupbox = QtWidgets.QGroupBox('Entity Types')
         groupbox.setObjectName('entities_group')
@@ -951,6 +1041,7 @@ class EntityTypesSelectionDialog(HasWidgetSystem, QtWidgets.QDialog):
     #   INTERFACE
     #################################
 
+
     def selectedItems(self) -> Set[Item]:
         """
         Return the set of selected item types.
@@ -976,10 +1067,12 @@ class AnnotationsOverridingDialog(HasWidgetSystem, QtWidgets.QDialog):
         """
         super().__init__(parent=session, **kwargs)
         self._project = project
+
         addBtn = QtWidgets.QRadioButton('Add annotations to the existing ones', self, objectName='add_annotations', checked=True)
         overrideBtn = QtWidgets.QRadioButton('Override existing annotations', self, objectName='override_annotations')
         self.addWidget(addBtn)
         self.addWidget(overrideBtn)
+
 
         diagramLayout = QtWidgets.QGridLayout(self)
         diagramLayout.setContentsMargins(8, 8, 8, 8)
@@ -1001,6 +1094,7 @@ class AnnotationsOverridingDialog(HasWidgetSystem, QtWidgets.QDialog):
         confirmation.addButton(QtWidgets.QDialogButtonBox.Cancel)
         confirmation.setObjectName('confirmation')
         self.addWidget(confirmation)
+
 
         buttonLayout = QtWidgets.QHBoxLayout(self)
         buttonLayout.setAlignment(QtCore.Qt.AlignRight)

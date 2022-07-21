@@ -147,6 +147,7 @@ class TemplateLoader(AbstractOntologyLoader):
                                 processed.add(item.iri)
 
 
+
 class CsvLoader(TemplateLoader):
     """
         Extends AbstractOntologyLoader with facilities to load annotations from CSV file format.
